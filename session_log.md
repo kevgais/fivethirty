@@ -92,3 +92,219 @@ This log maintains context across Claude Code sessions.
 
 ### Linear Issues Touched
 - HRN-129: App layout and navigation - DONE
+
+---
+
+## 2025-12-26 21:00
+
+### What We Worked On
+- Completed HRN-170: Cloudflare Workers API infrastructure
+- Completed HRN-171: React app structure with routing (was already done, verified and marked)
+- Built full REST API for recipes and meal planning
+- Ran D1 migrations locally and verified database connection
+
+### Files Created
+- `functions/api/[[path]].ts` - Catch-all route handler with full REST API
+
+### Files Modified
+- `wrangler.toml` - Updated for Pages Functions format (removed `main`, added `pages_build_output_dir`)
+
+### API Endpoints Built
+| Endpoint | Method | Description |
+|----------|--------|-------------|
+| `/api/health` | GET | Health check + recipe count |
+| `/api/recipes` | GET | List all recipes |
+| `/api/recipes/:id` | GET | Get single recipe |
+| `/api/recipes` | POST | Create recipe |
+| `/api/recipes/:id` | PUT | Update recipe |
+| `/api/recipes/:id` | DELETE | Delete recipe |
+| `/api/recipes/search` | GET | Search recipes by name/tag |
+| `/api/meal-plan` | GET | Get week's meal plan |
+| `/api/meal-plan` | POST | Add meal to plan |
+| `/api/meal-plan/:id` | DELETE | Remove from plan |
+
+### Decisions Made
+- **API pattern:** Single catch-all handler with route matcher (simpler than multiple files)
+- **Local dev:** Use `npx wrangler pages dev ./dist --d1=DB=<id>` for local testing
+- **CORS:** Added headers for local development
+
+### Current State
+- Frontend: `npm run dev` on http://localhost:5174
+- API: `npx wrangler pages dev` on http://localhost:8787
+- D1 Database: 10 seed recipes accessible via API
+- Phase 1 (Foundation) is now COMPLETE
+
+### Blockers / Open Questions
+- None - infrastructure is solid and ready for feature development
+
+### Next Steps
+1. Connect frontend to API (add fetch calls)
+2. Phase 2: Build recipe library with real data
+3. Phase 2: Implement drag-and-drop meal planning
+
+### Linear Issues Touched
+- HRN-170: Infrastructure setup - DONE
+- HRN-171: React app structure - DONE
+
+---
+
+## 2025-12-26 21:30
+
+### What We Worked On
+- **Phase 1 completed:** React Query setup, API client, hooks, connected UI
+- **Phase 2 completed:** Full meal planning calendar with recipe picker
+
+### Files Created
+
+**Phase 1 - API Layer & Hooks:**
+- `src/lib/api.ts` - Type-safe API client for recipes & meal plans
+- `src/hooks/useRecipes.ts` - React Query hooks (CRUD, search, delete)
+- `src/hooks/useMealPlan.ts` - React Query hooks (week view, today's meal)
+- `src/hooks/index.ts` - Barrel export
+
+**Phase 1 - UI Components:**
+- `src/components/ui/Modal.tsx` - Reusable dialog modal
+- `src/components/ui/Input.tsx` - Form inputs with labels & validation
+- `src/components/ui/index.ts` - Barrel export
+- `src/components/recipes/RecipeCard.tsx` - Recipe display (tags, time, actions)
+- `src/components/recipes/AddRecipeForm.tsx` - Full add recipe modal
+- `src/components/recipes/index.ts` - Barrel export
+
+**Phase 2 - Calendar Components:**
+- `src/components/calendar/MealSlot.tsx` - Meal display or empty slot
+- `src/components/calendar/DayColumn.tsx` - Day header + meal slot (desktop/mobile)
+- `src/components/calendar/RecipePicker.tsx` - Modal to select recipe for a day
+- `src/components/calendar/WeekCalendar.tsx` - Full week view with navigation
+- `src/components/calendar/index.ts` - Barrel export
+
+### Files Modified
+- `src/main.tsx` - Added QueryClientProvider
+- `src/pages/Recipes.tsx` - Connected to API with search/filter/add/delete
+- `src/pages/Home.tsx` - Shows tonight's meal and week summary from API
+- `src/pages/Planner.tsx` - Full week calendar with recipe picker
+- `src/components/index.ts` - Added all new component exports
+
+### Features Implemented
+
+**Recipes Page:**
+- Fetches real recipes from D1 database
+- Search by name or notes
+- Filter by tag (quick, kid-friendly, spicy, etc.)
+- Add new recipes via modal form
+- Delete recipes with confirmation
+
+**Home Page:**
+- Shows tonight's dinner if planned
+- Week summary with planned meals highlighted
+- Today's date highlighted
+- Links to planner and shopping
+
+**Planner Page:**
+- Week calendar view (grid on desktop, list on mobile)
+- Navigate between weeks
+- Tap any day to open recipe picker
+- Remove meals with X button
+- "Week complete" celebration when all 7 days planned
+- Generate shopping list button (stub)
+
+### Current State
+- **Frontend:** http://localhost:5175 (Vite dev server)
+- **API:** http://localhost:8788 (Wrangler Pages dev)
+- Both servers running and connected
+- Full CRUD for recipes working
+- Meal planning working (add/remove meals to calendar)
+
+### Technical Notes
+- API_BASE updated to port 8788 (Pages dev default)
+- Using `wrangler pages dev dist --local` for API
+- React Query caching set to 5 minutes
+
+### Next Steps
+1. **Phase 3:** Pantry & Inventory (barcode scanning)
+2. **Phase 5:** Shopping list generation from meal plan
+3. Connect shopping list to planned meals' ingredients
+
+### Linear Issues Status
+- Phase 1 (Foundation) - COMPLETE
+- Phase 2 (Meal Planning) - COMPLETE
+- Phase 3 (Pantry) - NOT STARTED
+- Phase 4 (Shopping List) - NOT STARTED
+- Phase 5 (AI Features) - NOT STARTED
+
+---
+
+## 2025-12-26 22:35
+
+### What We Worked On
+- **Phase 3 Complete:** Pantry & Inventory feature with barcode scanning
+
+### Design Decisions (via Brainstorming)
+| Aspect | Decision | Rationale |
+|--------|----------|-----------|
+| Adding items | Hybrid — quick-add + barcode scan | Most items lack barcodes |
+| Expiry tracking | Optional | Reduce friction |
+| Quantity | Simple counts with units | "2 packs" helps planning |
+| Categories | 3 — Fridge, Freezer, Cupboard | Maps to physical locations |
+| Low stock | Manual flag | User knows best |
+
+### Files Created
+**API:**
+- `functions/api/[[path]].ts` - Added 11 pantry endpoints
+
+**React Query Hooks:**
+- `src/hooks/usePantry.ts` - CRUD, increment/decrement, toggle-low, barcode lookup
+
+**Components:**
+- `src/components/pantry/BarcodeScanner.tsx` - Camera barcode scanner with html5-qrcode
+- `src/components/pantry/PantryItemCard.tsx` - Item card with quantity controls
+- `src/components/pantry/CategorySection.tsx` - Collapsible category groups
+- `src/components/pantry/AddItemModal.tsx` - Add/edit item form
+- `src/components/pantry/QuickAddBar.tsx` - Quick-add chips for common items
+- `src/components/pantry/index.ts` - Barrel export
+
+**Documentation:**
+- `docs/plans/2025-12-26-pantry-design.md` - Full feature design doc
+
+**Database:**
+- `migrations/0004_pantry_columns.sql` - Added quantity_unit, is_low, image_url, updated_at
+
+### API Endpoints Added
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| GET | `/api/pantry` | List items with filters |
+| POST | `/api/pantry` | Add item |
+| GET | `/api/pantry/stats` | Category counts, low, expiring |
+| GET | `/api/pantry/:id` | Get single item |
+| PUT | `/api/pantry/:id` | Update item |
+| DELETE | `/api/pantry/:id` | Remove item |
+| PATCH | `/api/pantry/:id/increment` | +1 quantity |
+| PATCH | `/api/pantry/:id/decrement` | -1 quantity |
+| PATCH | `/api/pantry/:id/toggle-low` | Toggle low stock flag |
+| POST | `/api/pantry/barcode/:code` | Lookup via Open Food Facts |
+
+### Features Implemented
+- **Quick-add chips:** Milk, Eggs, Bread, Butter, Chicken, Cheese, Pasta, Rice
+- **Barcode scanning:** Camera-based using html5-qrcode, lookups via Open Food Facts API
+- **Category management:** Fridge/Freezer/Cupboard with collapsible sections
+- **Quantity tracking:** Increment/decrement with units (pack, bottle, tin, etc.)
+- **Low stock flags:** Manual toggle, appears in "Running Low" summary
+- **Expiry alerts:** "Use Soon" section for items expiring within 3 days
+- **Filter views:** All items, Low stock only, Expiring soon only
+
+### Current State
+- **Frontend:** http://localhost:5175
+- **API:** http://localhost:8788
+- Phase 3 (Pantry) is now COMPLETE
+- 3 test items in pantry (Milk, Chicken, Pasta)
+
+### Next Steps
+1. **Phase 4:** Shopping List generation from meal plan ingredients
+2. Connect shopping list to pantry (subtract items already in stock)
+3. Deploy to Cloudflare Pages
+
+### Linear Issues Status
+- Phase 1 (Foundation) - COMPLETE
+- Phase 2 (Meal Planning) - COMPLETE
+- Phase 3 (Pantry) - COMPLETE
+- Phase 4 (Shopping List) - NOT STARTED
+- Phase 5 (AI Features) - NOT STARTED

@@ -1,6 +1,6 @@
 name = "fivethirty"
-main = "functions/api/[[path]].ts"
 compatibility_date = "2024-12-01"
+pages_build_output_dir = "./dist"
 
 # D1 Database binding
 [[d1_databases]]
@@ -16,12 +16,3 @@ binding = "AI"
 [vars]
 ENVIRONMENT = "production"
 APP_NAME = "Five Thirty"
-
-# Local development
-[dev]
-port = 8787
-local_protocol = "http"
-
-# Pages configuration
-[site]
-bucket = "./dist"
