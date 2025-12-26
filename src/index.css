@@ -1,0 +1,94 @@
+@import "tailwindcss";
+
+@theme {
+  /* Colors */
+  --color-cream: #FAF7F2;
+  --color-warm-white: #FFFDF9;
+  --color-terracotta: #C65D3B;
+  --color-sage: #7B9E87;
+  --color-charcoal: #2D2D2D;
+  --color-mushroom: #8B7E74;
+  --color-butter: #F5E6C8;
+  --color-clock-gold: #D4A853;
+
+  /* Fonts */
+  --font-display: 'Fraunces', serif;
+  --font-body: 'Source Sans 3', sans-serif;
+
+  /* Border radius */
+  --radius-soft: 12px;
+  --radius-round: 24px;
+
+  /* Animations */
+  --animate-spin-slow: spin 3s linear infinite;
+  --animate-pulse-soft: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+@layer base {
+  :root {
+    font-family: 'Source Sans 3', system-ui, sans-serif;
+    line-height: 1.5;
+    font-weight: 400;
+    font-synthesis: none;
+    text-rendering: optimizeLegibility;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  body {
+    @apply bg-cream text-charcoal min-h-screen;
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    font-family: 'Fraunces', serif;
+  }
+}
+
+@layer components {
+  .btn-primary {
+    @apply bg-terracotta text-white px-4 py-2 rounded-soft font-medium
+           hover:bg-terracotta/90 transition-colors duration-200
+           focus:outline-none focus:ring-2 focus:ring-terracotta focus:ring-offset-2;
+  }
+
+  .btn-secondary {
+    @apply bg-sage/10 text-sage px-4 py-2 rounded-soft font-medium
+           hover:bg-sage/20 transition-colors duration-200
+           focus:outline-none focus:ring-2 focus:ring-sage focus:ring-offset-2;
+  }
+
+  .card {
+    @apply bg-warm-white rounded-xl shadow-sm p-4
+           hover:shadow-md transition-shadow duration-200;
+  }
+
+  .tag {
+    @apply inline-flex items-center px-2 py-1 rounded-full text-xs font-medium;
+  }
+
+  .tag-quick {
+    @apply inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-clock-gold/20 text-clock-gold;
+  }
+
+  .tag-kid-friendly {
+    @apply inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-sage/20 text-sage;
+  }
+
+  .tag-spicy {
+    @apply inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-terracotta/20 text-terracotta;
+  }
+}
+
+@layer utilities {
+  .font-display {
+    font-family: 'Fraunces', serif;
+  }
+
+  .font-body {
+    font-family: 'Source Sans 3', sans-serif;
+  }
+
+  .safe-area-bottom {
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+  }
+}

@@ -1,0 +1,27 @@
+name = "fivethirty"
+main = "functions/api/[[path]].ts"
+compatibility_date = "2024-12-01"
+
+# D1 Database binding
+[[d1_databases]]
+binding = "DB"
+database_name = "fivethirty-db"
+database_id = "4a237d8a-8ea8-4170-9af6-a53ea231b0f2"
+
+# Workers AI binding
+[ai]
+binding = "AI"
+
+# Environment variables
+[vars]
+ENVIRONMENT = "production"
+APP_NAME = "Five Thirty"
+
+# Local development
+[dev]
+port = 8787
+local_protocol = "http"
+
+# Pages configuration
+[site]
+bucket = "./dist"
