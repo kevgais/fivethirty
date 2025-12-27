@@ -308,3 +308,158 @@ This log maintains context across Claude Code sessions.
 - Phase 3 (Pantry) - COMPLETE
 - Phase 4 (Shopping List) - NOT STARTED
 - Phase 5 (AI Features) - NOT STARTED
+
+---
+
+## 2025-12-26 22:45
+
+### What We Worked On
+- Consolidated project folders (merged `five30/` into `fivethirty/`)
+- Pushed Phase 1-3 work to GitHub
+
+### Decisions Made
+- Merged planning docs from `five30/` into `fivethirty/docs/specs/`
+- Deleted redundant `five30/` folder
+- Single project structure going forward
+
+### Current State
+- All code and docs in `kev-playground/fivethirty/`
+- Project structure:
+  ```
+  fivethirty/
+  ├── docs/
+  │   ├── plans/    # Design docs
+  │   └── specs/    # PRD, credentials, Linear setup
+  ├── src/          # React app
+  ├── functions/    # Cloudflare Workers API
+  └── migrations/   # D1 database
+  ```
+- GitHub repo: kevgais/fivethirty (up to date)
+
+### Next Steps
+1. Phase 4: Shopping List generation
+2. Connect shopping to meal plan ingredients
+3. Subtract pantry items from shopping list
+
+---
+
+## 2025-12-27 (Phase 4 - Shopping List)
+
+### What We Worked On
+- **Phase 4 Complete:** Full shopping list feature with API, hooks, and UI
+
+### Files Created
+- `src/hooks/useShopping.ts` - React Query hooks for shopping operations
+
+### Files Modified
+- `functions/api/[[path]].ts` - Added 10 shopping list endpoints
+- `src/lib/api.ts` - Added shopping types and API client
+- `src/hooks/index.ts` - Export shopping hooks
+- `src/pages/Shopping.tsx` - Full implementation (was placeholder)
+- `src/main.tsx` - Added Toaster for notifications
+
+### Dependencies Added
+- `sonner` - Toast notifications library
+
+### API Endpoints Added
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| GET | `/api/shopping-lists` | Get active list (auto-create) |
+| POST | `/api/shopping-lists` | Create new list |
+| GET | `/api/shopping-lists/:id` | Get list with items |
+| PUT | `/api/shopping-lists/:id` | Update list |
+| GET | `/api/shopping-items` | Get items for a list |
+| POST | `/api/shopping-items` | Add item |
+| PUT | `/api/shopping-items/:id` | Update item |
+| DELETE | `/api/shopping-items/:id` | Remove item |
+| PATCH | `/api/shopping-items/:id/check` | Toggle checked |
+| DELETE | `/api/shopping-items/checked` | Clear all checked |
+| POST | `/api/shopping-lists/generate` | Generate from meal plan |
+
+### Features Implemented
+- **Manual item add:** Type + Enter or click + button
+- **Tap to check/uncheck:** Visual strikethrough + green check
+- **Category grouping:** Dairy, Meat, Veg, Fruit, Bakery, Frozen, Cupboard, Other
+- **Source indicators:** "auto" (from meal plan), "scanned" (trash scanner)
+- **Clear done:** Remove all checked items
+- **Generate from meal plan:** Extracts ingredients from week's planned meals
+- **Pantry subtraction:** Excludes items already in pantry
+- **Trash scanner:** Reuses barcode scanner to add items from empty packaging
+- **Share list:** Native share or clipboard copy
+
+### Generate Logic
+1. Gets all recipes from meal plan for current week
+2. Parses ingredients JSON from each recipe
+3. Aggregates unique ingredients
+4. Auto-categorizes (milk->dairy, chicken->meat, etc.)
+5. Queries pantry for items in stock
+6. Subtracts pantry items from shopping list
+7. Inserts remaining items with source='auto'
+
+### Current State
+- **Frontend:** http://localhost:5173
+- **API:** http://localhost:8788
+- Phase 4 (Shopping List) is now COMPLETE
+- All shopping features working
+
+### Linear Issues Status
+- Phase 1 (Foundation) - COMPLETE
+- Phase 2 (Meal Planning) - COMPLETE
+- Phase 3 (Pantry) - COMPLETE
+- Phase 4 (Shopping List) - COMPLETE
+- Phase 5 (AI Features) - NOT STARTED
+
+### Next Steps
+1. Phase 5: AI features (meal suggestions, URL import)
+2. Deploy to Cloudflare Pages
+3. Test end-to-end flow
+
+---
+
+## 2025-12-27 09:25
+
+### What We Worked On
+- **Deployed to Cloudflare Pages** - App is now live!
+- Created Cloudflare Pages project
+- Bound D1 database to production
+- Verified all API endpoints working
+
+### Deployment Details
+| Item | Value |
+|------|-------|
+| **Live URL** | https://fivethirty.pages.dev |
+| **Project** | fivethirty |
+| **D1 Database** | 4a237d8a-8ea8-4170-9af6-a53ea231b0f2 |
+| **Region** | WEUR |
+
+### Commands Used
+```bash
+# Create project
+npx wrangler pages project create fivethirty --production-branch=main
+
+# Deploy
+npx wrangler pages deploy dist --project-name=fivethirty --commit-dirty=true
+```
+
+### Verified Working
+- ✅ Frontend loads at https://fivethirty.pages.dev
+- ✅ `/api/recipes` returns 10 recipes from D1
+- ✅ `/api/shopping-lists` creates/returns shopping list
+- ✅ All Phase 1-4 features functional
+
+### Current State
+- **Production:** https://fivethirty.pages.dev (LIVE)
+- **Local dev:** Still works via `npm run dev` + `npx wrangler pages dev dist --local`
+- All 4 phases deployed and working
+
+### Linear Issues Status
+- Phase 1 (Foundation) - COMPLETE & DEPLOYED
+- Phase 2 (Meal Planning) - COMPLETE & DEPLOYED
+- Phase 3 (Pantry) - COMPLETE & DEPLOYED
+- Phase 4 (Shopping List) - COMPLETE & DEPLOYED
+- Phase 5 (AI Features) - NOT STARTED
+
+### Next Steps
+1. Phase 5: AI features (meal suggestions, URL import)
+2. Custom domain setup (optional)
+3. Share with family for testing

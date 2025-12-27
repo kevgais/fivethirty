@@ -16,7 +16,7 @@ import {
   BarcodeScanner,
   QuickAddBar,
 } from '../components';
-import type { BarcodeResult, CreatePantryItemInput, PantryItem } from '../lib/api';
+import type { BarcodeResult, CreatePantryItemInput } from '../lib/api';
 import type { QuickAddItem } from '../components/pantry/QuickAddBar';
 
 export function Pantry() {

@@ -102,6 +102,47 @@ export interface BarcodeResult {
   error?: string;
 }
 
+// Shopping List Types
+export interface ShoppingList {
+  id: number;
+  name: string;
+  status: 'active' | 'completed';
+  created_at: string;
+  completed_at?: string;
+}
+
+export interface ShoppingItem {
+  id: number;
+  list_id: number;
+  name: string;
+  quantity?: string;
+  category?: string;
+  checked: number; // 0 or 1
+  source: 'auto' | 'manual' | 'trash_scan';
+  barcode?: string;
+  scanned_at?: string;
+}
+
+export interface ShoppingListWithItems extends ShoppingList {
+  items: ShoppingItem[];
+}
+
+export interface CreateShoppingItemInput {
+  list_id: number;
+  name: string;
+  quantity?: string;
+  category?: string;
+  source?: 'auto' | 'manual' | 'trash_scan';
+  barcode?: string;
+}
+
+export interface GenerateListResult {
+  list_id: number;
+  items_added: number;
+  pantry_items_subtracted?: number;
+  message: string;
+}
+
 // Helper to parse JSON fields from recipe
 export function parseRecipe(recipe: Recipe): Recipe & { ingredientsList: string[]; tagsList: string[] } {
   return {
@@ -191,6 +232,72 @@ export const mealPlanApi = {
 // Health check
 export const healthApi = {
   check: () => request<{ status: string; database: string; recipeCount: number }>('/api/health'),
+};
+
+// Shopping API
+export const shoppingApi = {
+  // Get active shopping list (creates one if none exists)
+  getActiveList: () => request<ShoppingList>('/api/shopping-lists'),
+
+  // Get list with items
+  getListWithItems: (id: number) => request<ShoppingListWithItems>(`/api/shopping-lists/${id}`),
+
+  // Create new list (marks previous as completed)
+  createList: (name?: string) =>
+    request<{ id: number; message: string }>('/api/shopping-lists', {
+      method: 'POST',
+      body: JSON.stringify({ name }),
+    }),
+
+  // Update list
+  updateList: (id: number, data: { name?: string; status?: 'active' | 'completed' }) =>
+    request<{ message: string }>(`/api/shopping-lists/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    }),
+
+  // Get items for a list
+  getItems: (listId: number) =>
+    request<ShoppingItem[]>(`/api/shopping-items?list_id=${listId}`),
+
+  // Add item
+  addItem: (data: CreateShoppingItemInput) =>
+    request<{ id: number; message: string }>('/api/shopping-items', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+
+  // Update item
+  updateItem: (id: number, data: { name?: string; quantity?: string; category?: string }) =>
+    request<{ message: string }>(`/api/shopping-items/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    }),
+
+  // Delete item
+  deleteItem: (id: number) =>
+    request<{ message: string }>(`/api/shopping-items/${id}`, {
+      method: 'DELETE',
+    }),
+
+  // Toggle checked status
+  toggleItem: (id: number) =>
+    request<{ checked: boolean; message: string }>(`/api/shopping-items/${id}/check`, {
+      method: 'PATCH',
+    }),
+
+  // Clear all checked items
+  clearChecked: (listId: number) =>
+    request<{ removed: number; message: string }>(`/api/shopping-items/checked?list_id=${listId}`, {
+      method: 'DELETE',
+    }),
+
+  // Generate list from meal plan
+  generateFromMealPlan: (weekStart: string) =>
+    request<GenerateListResult>('/api/shopping-lists/generate', {
+      method: 'POST',
+      body: JSON.stringify({ week_start: weekStart }),
+    }),
 };
 
 // Pantry API

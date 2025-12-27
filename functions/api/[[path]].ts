@@ -541,6 +541,349 @@ const routes: Record<string, Record<string, Handler>> = {
       }
     },
   },
+
+  // ============================================
+  // SHOPPING LIST ENDPOINTS
+  // ============================================
+
+  // GET /api/shopping-lists - Get active shopping list (create if none exists)
+  'GET /api/shopping-lists': {
+    handler: async (_request, env) => {
+      // Get active list
+      let list = await env.DB.prepare(
+        `SELECT * FROM shopping_lists WHERE status = 'active' ORDER BY created_at DESC LIMIT 1`
+      ).first();
+
+      // Create one if none exists
+      if (!list) {
+        const result = await env.DB.prepare(
+          `INSERT INTO shopping_lists (name, status) VALUES ('Weekly Shop', 'active')`
+        ).run();
+        list = await env.DB.prepare(
+          `SELECT * FROM shopping_lists WHERE id = ?`
+        ).bind(result.meta.last_row_id).first();
+      }
+
+      return json(list);
+    },
+  },
+
+  // POST /api/shopping-lists - Create new shopping list
+  'POST /api/shopping-lists': {
+    handler: async (request, env) => {
+      const body = await request.json() as Record<string, unknown>;
+      const name = (body.name as string) || 'Weekly Shop';
+
+      // Mark any existing active lists as completed
+      await env.DB.prepare(
+        `UPDATE shopping_lists SET status = 'completed', completed_at = CURRENT_TIMESTAMP WHERE status = 'active'`
+      ).run();
+
+      const result = await env.DB.prepare(
+        `INSERT INTO shopping_lists (name, status) VALUES (?, 'active')`
+      ).bind(name).run();
+
+      return json({ id: result.meta.last_row_id, message: 'Shopping list created' }, 201);
+    },
+  },
+
+  // GET /api/shopping-lists/:id - Get list with items
+  'GET /api/shopping-lists/:id': {
+    handler: async (_request, env, params) => {
+      const list = await env.DB.prepare(
+        `SELECT * FROM shopping_lists WHERE id = ?`
+      ).bind(params.id).first();
+
+      if (!list) {
+        return error('Shopping list not found', 404);
+      }
+
+      const { results: items } = await env.DB.prepare(
+        `SELECT * FROM shopping_items WHERE list_id = ? ORDER BY category ASC, name ASC`
+      ).bind(params.id).all();
+
+      return json({ ...list, items });
+    },
+  },
+
+  // PUT /api/shopping-lists/:id - Update list (name, status)
+  'PUT /api/shopping-lists/:id': {
+    handler: async (request, env, params) => {
+      const body = await request.json() as Record<string, unknown>;
+      const { name, status } = body;
+
+      let sql = 'UPDATE shopping_lists SET ';
+      const updates: string[] = [];
+      const bindings: (string | number)[] = [];
+
+      if (name) {
+        updates.push('name = ?');
+        bindings.push(name as string);
+      }
+      if (status) {
+        updates.push('status = ?');
+        bindings.push(status as string);
+        if (status === 'completed') {
+          updates.push('completed_at = CURRENT_TIMESTAMP');
+        }
+      }
+
+      if (updates.length === 0) {
+        return error('No fields to update');
+      }
+
+      sql += updates.join(', ') + ' WHERE id = ?';
+      bindings.push(parseInt(params.id));
+
+      const result = await env.DB.prepare(sql).bind(...bindings).run();
+
+      if (result.meta.changes === 0) {
+        return error('Shopping list not found', 404);
+      }
+      return json({ message: 'Shopping list updated' });
+    },
+  },
+
+  // GET /api/shopping-items - Get items for a list
+  'GET /api/shopping-items': {
+    handler: async (request, env) => {
+      const url = new URL(request.url);
+      const listId = url.searchParams.get('list_id');
+
+      if (!listId) {
+        return error('list_id is required');
+      }
+
+      const { results } = await env.DB.prepare(
+        `SELECT * FROM shopping_items WHERE list_id = ? ORDER BY category ASC, checked ASC, name ASC`
+      ).bind(listId).all();
+
+      return json(results);
+    },
+  },
+
+  // POST /api/shopping-items - Add item to list
+  'POST /api/shopping-items': {
+    handler: async (request, env) => {
+      const body = await request.json() as Record<string, unknown>;
+      const { list_id, name, quantity, category, source, barcode } = body;
+
+      if (!list_id || !name) {
+        return error('list_id and name are required');
+      }
+
+      const result = await env.DB.prepare(`
+        INSERT INTO shopping_items (list_id, name, quantity, category, source, barcode, scanned_at)
+        VALUES (?, ?, ?, ?, ?, ?, ?)
+      `).bind(
+        list_id,
+        name,
+        quantity || null,
+        category || 'other',
+        source || 'manual',
+        barcode || null,
+        barcode ? new Date().toISOString() : null
+      ).run();
+
+      return json({ id: result.meta.last_row_id, message: 'Item added' }, 201);
+    },
+  },
+
+  // PUT /api/shopping-items/:id - Update item
+  'PUT /api/shopping-items/:id': {
+    handler: async (request, env, params) => {
+      const body = await request.json() as Record<string, unknown>;
+      const { name, quantity, category } = body;
+
+      const result = await env.DB.prepare(`
+        UPDATE shopping_items SET
+          name = COALESCE(?, name),
+          quantity = COALESCE(?, quantity),
+          category = COALESCE(?, category)
+        WHERE id = ?
+      `).bind(
+        name || null,
+        quantity || null,
+        category || null,
+        params.id
+      ).run();
+
+      if (result.meta.changes === 0) {
+        return error('Item not found', 404);
+      }
+      return json({ message: 'Item updated' });
+    },
+  },
+
+  // DELETE /api/shopping-items/:id - Remove item
+  'DELETE /api/shopping-items/:id': {
+    handler: async (_request, env, params) => {
+      const result = await env.DB.prepare(
+        'DELETE FROM shopping_items WHERE id = ?'
+      ).bind(params.id).run();
+
+      if (result.meta.changes === 0) {
+        return error('Item not found', 404);
+      }
+      return json({ message: 'Item removed' });
+    },
+  },
+
+  // PATCH /api/shopping-items/:id/check - Toggle checked status
+  'PATCH /api/shopping-items/:id/check': {
+    handler: async (_request, env, params) => {
+      const item = await env.DB.prepare(
+        'SELECT checked FROM shopping_items WHERE id = ?'
+      ).bind(params.id).first() as { checked: number } | null;
+
+      if (!item) {
+        return error('Item not found', 404);
+      }
+
+      const newValue = item.checked ? 0 : 1;
+
+      await env.DB.prepare(
+        'UPDATE shopping_items SET checked = ? WHERE id = ?'
+      ).bind(newValue, params.id).run();
+
+      return json({ checked: newValue === 1, message: newValue ? 'Item checked' : 'Item unchecked' });
+    },
+  },
+
+  // DELETE /api/shopping-items/checked - Remove all checked items from a list
+  'DELETE /api/shopping-items/checked': {
+    handler: async (request, env) => {
+      const url = new URL(request.url);
+      const listId = url.searchParams.get('list_id');
+
+      if (!listId) {
+        return error('list_id is required');
+      }
+
+      const result = await env.DB.prepare(
+        'DELETE FROM shopping_items WHERE list_id = ? AND checked = 1'
+      ).bind(listId).run();
+
+      return json({ removed: result.meta.changes, message: 'Checked items removed' });
+    },
+  },
+
+  // POST /api/shopping-lists/generate - Generate from meal plan
+  'POST /api/shopping-lists/generate': {
+    handler: async (request, env) => {
+      const body = await request.json() as Record<string, unknown>;
+      const weekStart = body.week_start as string; // YYYY-MM-DD
+
+      if (!weekStart) {
+        return error('week_start is required (YYYY-MM-DD format)');
+      }
+
+      // Get or create active shopping list
+      let list = await env.DB.prepare(
+        `SELECT * FROM shopping_lists WHERE status = 'active' ORDER BY created_at DESC LIMIT 1`
+      ).first() as { id: number } | null;
+
+      if (!list) {
+        const result = await env.DB.prepare(
+          `INSERT INTO shopping_lists (name, status) VALUES ('Weekly Shop', 'active')`
+        ).run();
+        list = { id: result.meta.last_row_id as number };
+      }
+
+      // Get all recipes planned for the week
+      const { results: mealPlans } = await env.DB.prepare(`
+        SELECT r.ingredients
+        FROM meal_plans mp
+        JOIN recipes r ON mp.recipe_id = r.id
+        WHERE mp.planned_date >= ? AND mp.planned_date < date(?, '+7 days')
+      `).bind(weekStart, weekStart).all() as { results: { ingredients: string }[] };
+
+      if (mealPlans.length === 0) {
+        return json({
+          list_id: list.id,
+          items_added: 0,
+          message: 'No meals planned for this week'
+        });
+      }
+
+      // Aggregate all ingredients
+      const ingredientMap = new Map<string, { quantity: string; category: string }>();
+
+      // Category mapping for common ingredients
+      const categorizeIngredient = (name: string): string => {
+        const lower = name.toLowerCase();
+        if (/milk|cheese|butter|cream|yogurt|yoghurt/.test(lower)) return 'dairy';
+        if (/chicken|beef|pork|lamb|salmon|fish|bacon|sausage|mince/.test(lower)) return 'meat';
+        if (/tomato|onion|pepper|lettuce|spinach|carrot|potato|garlic|mushroom|courgette|broccoli|cucumber/.test(lower)) return 'veg';
+        if (/apple|banana|orange|lemon|lime|berry|fruit/.test(lower)) return 'fruit';
+        if (/bread|roll|bun|croissant|bagel/.test(lower)) return 'bakery';
+        if (/ice cream|frozen|pizza/.test(lower)) return 'frozen';
+        if (/pasta|rice|tinned|canned|flour|sugar|spice|oil|vinegar|sauce|stock/.test(lower)) return 'cupboard';
+        return 'other';
+      };
+
+      for (const meal of mealPlans) {
+        try {
+          const ingredients: string[] = JSON.parse(meal.ingredients);
+          for (const ing of ingredients) {
+            // Use the ingredient name as key (normalized)
+            const key = ing.toLowerCase().trim();
+            if (!ingredientMap.has(key)) {
+              ingredientMap.set(key, {
+                quantity: '', // Could parse quantity from ingredient string
+                category: categorizeIngredient(ing),
+              });
+            }
+          }
+        } catch {
+          // Skip invalid JSON
+        }
+      }
+
+      // Get pantry items to subtract
+      const { results: pantryItems } = await env.DB.prepare(`
+        SELECT LOWER(name) as name FROM pantry_items
+        WHERE used_at IS NULL AND (is_low = 0 OR is_low IS NULL)
+      `).all() as { results: { name: string }[] };
+
+      const pantrySet = new Set(pantryItems.map(p => p.name.toLowerCase().trim()));
+
+      // Remove items we already have in pantry
+      for (const pantryName of pantrySet) {
+        // Check for partial matches (e.g., "milk" matches "2L milk")
+        for (const [key] of ingredientMap) {
+          if (key.includes(pantryName) || pantryName.includes(key)) {
+            ingredientMap.delete(key);
+          }
+        }
+      }
+
+      // Insert items into shopping list
+      let itemsAdded = 0;
+      for (const [name, details] of ingredientMap) {
+        // Capitalize first letter
+        const displayName = name.charAt(0).toUpperCase() + name.slice(1);
+
+        await env.DB.prepare(`
+          INSERT INTO shopping_items (list_id, name, quantity, category, source)
+          VALUES (?, ?, ?, ?, 'auto')
+        `).bind(
+          list.id,
+          displayName,
+          details.quantity || null,
+          details.category
+        ).run();
+        itemsAdded++;
+      }
+
+      return json({
+        list_id: list.id,
+        items_added: itemsAdded,
+        pantry_items_subtracted: pantryItems.length,
+        message: `Generated shopping list with ${itemsAdded} items`
+      });
+    },
+  },
 };
 
 // Route matcher
